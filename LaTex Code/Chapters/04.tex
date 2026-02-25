@@ -1,0 +1,285 @@
+\chapter{Conception et Modélisation}
+
+À partir de l’analyse fonctionnelle, la phase de conception a pour objectif de traduire les besoins exprimés en une représentation structurée des données.
+Cette étape s’appuie sur la méthode de MCD, qui permet de représenter les objets du système, leurs caractéristiques et leurs relations logiques, avant de passer à l’implémentation dans Microsoft Access.
+
+
+\section{Modèle Conceptuel de Données}
+Le MCD représente les principales entités du système ainsi que les associations qui traduisent leurs liens fonctionnels.
+Dans le cadre du centre de formation Mindcraft, les entités identifiées sont les suivantes :
+
+
+\begin{table}[!htpb]
+    \caption{Description des entités principales du système}
+    \label{tab:entites}
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \setlength{\tabcolsep}{6pt}
+    \begin{tabular}{p{2cm} p{5cm} p{8cm}}
+        \toprule
+        \textbf{Entité} & \textbf{Description} & \textbf{Attributs principaux} \\
+        \midrule
+        \textbf{Élève} & Représente chaque apprenant inscrit au centre. & ID\_Élève, Nom, Prénom, DateNaissance, NomParent, EmailParent, Téléphone, École \\
+
+        \textbf{Programme} & Regroupe les informations sur les formations proposées. & ID\_Programme, NomProgramme, Description, Catégorie \\
+
+        \textbf{Séance} & Décrit chaque séance programmée. & ID\_Séance, JourSemaine, Heure, DateDébut, DateFin, Capacité\\
+
+        \textbf{Coach} & Représente les formateurs encadrant les séances. & ID\_Coach, Nom, Prénom, Spécialité, TypeRémunération, MontantRémunération, Email, Téléphone \\
+
+        \textbf{Paiement} & Trace les transactions effectuées par les élèves. & ID\_Paiement, Montant, DatePaiement, ModePaiement \\
+
+        \textbf{Salle} & Désigne les salles où se déroulent les séances. & ID\_Salle, NomSalle, CapacitéSalle \\
+
+        \textbf{Attestation} & Représente les certificats délivrés aux élèves. & ID\_Attestation, DateAttestation, Statut, NuméroAttestation \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection*{Associations principales:}
+
+\begin{itemize}
+    \item \textbf{Inscription} : relie un élève à une séance (1:N). 
+    Un élève peut suivre plusieurs programmes ; un programme regroupe plusieurs élèves.
+
+    \item \textbf{Planification} : chaque séance appartient à un seul programme (1:N entre Programme et Séance).
+
+    \item \textbf{Encadrement} : un coach anime plusieurs séances (1:N entre Coach et Séance).
+
+    \item \textbf{Réservation de salle} : une salle peut accueillir plusieurs séances, mais chaque séance se déroule dans une seule salle (1:N entre Salle et Séance).
+
+    \item \textbf{Règlement} : chaque paiement est lié à un seul élève (1:N entre Élève et Paiement).
+
+    \item \textbf{Attestation} : un élève peut recevoir plusieurs attestations, chacune liée à un programme validé (1:N entre Élève et Attestation).
+\end{itemize}
+
+\subsection*{Cardinalités:}
+
+\begin{table}[!htpb]
+    \caption{Relations et cardinalités entre les entités principales}
+    \label{tab:relations-cardinalites}
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \setlength{\tabcolsep}{6pt}
+    \begin{tabular}{p{8cm} p{7cm}}
+        \toprule
+        \textbf{Relation} & \textbf{Cardinalité (min, max)} \\
+        \midrule
+
+        % Élève - Inscription
+        Élève – Programme (Inscription) 
+        & Élève (1,1) ↔ (0,N) Inscription \newline Programme (1,1) ↔ (0,N) Inscription \\
+
+        % Programme - Séance
+        Programme – Séance (Planification) 
+        & Programme (1,1) ↔ (0,N) Séance \\
+
+        % Coach - Séance
+        Coach – Séance (Encadrement) 
+        & Coach (1,1) ↔ (0,N) Séance \\
+
+        % Élève - Paiement
+        Élève – Paiement (Règlement) 
+        & Élève (1,1) ↔ (0,N) Paiement \\
+
+        % Salle - Séance
+        Salle – Séance (Occupation / Réservation) 
+        & Salle (1,1) ↔ (0,N) Séance \\
+
+        % Élève - Attestation
+        Élève – Attestation 
+        & Élève (1,1) ↔ (0,N) Attestation \\
+
+        % Programme - Attestation
+        Programme – Attestation 
+        & Programme (1,1) ↔ (0,N) Attestation \\
+
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{figure}[!htpb]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/MCD.png}
+    \caption{MCD de projet}
+    \label{fig:figure-01}
+\end{figure}
+
+
+\section{Transformation du MCD → MLD → MPD}
+La transformation du MCD en modèle logique (relationnel) consiste à convertir chaque entité et chaque relation en table relationnelle tout en conservant les dépendances fonctionnelles et les contraintes d’intégrité.
+
+\begin{itemize}
+    \item Chaque entité devient une table.
+    \item Les identifiants deviennent les clés primaires (PK).
+    \item Pour une relation 1:N, la clé primaire du côté « 1 » devient une clé étrangère (FK) dans la table du côté « N ».
+    \item Pour une relation N:N, une nouvelle table associative est créée, contenant les deux clés primaires et les éventuels attributs de la relation.
+\end{itemize}
+
+
+
+\begin{table}[!htpb]
+    \caption{Description de Modèle logique des données}
+    \label{tab:entites}
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \setlength{\tabcolsep}{6pt}
+    \begin{tabular}{p{2cm} p{5cm} p{8cm}}
+        \toprule
+        \textbf{Entité} & \textbf{Description} & \textbf{Attributs principaux} \\
+        \midrule
+        \textbf{Élève} & Représente chaque apprenant inscrit au centre. & ID\_Élève (PK), Nom, Prénom, DateNaissance, NomParent, EmailParent, Téléphone, École \\
+
+        \textbf{Programme} & Regroupe les informations sur les formations proposées. & ID\_Programme (PK), NomProgramme, Description, Catégorie \\
+
+        \textbf{Séance} & Décrit chaque séance programmée. & ID\_Séance (PK), JourSemaine, Heure, DateDébut, DateFin, Capacité, ID\_Programme (FK), ID\_Coach (FK), ID\_Salle (FK) \\
+
+        \textbf{Coach} & Représente les formateurs encadrant les séances. & ID\_Coach (PK), Nom, Prénom, Spécialité, TypeRémunération, MontantRémunération, Email, Téléphone \\
+
+        \textbf{Paiement} & Trace les transactions effectuées par les élèves. & ID\_Paiement (PK), ID\_Élève (FK), Montant, DatePaiement, ModePaiement \\
+
+        \textbf{Salle} & Désigne les salles où se déroulent les séances. & ID\_Salle (PK), NomSalle, CapacitéSalle \\
+
+        \textbf{Attestation} & Représente les certificats délivrés aux élèves. & ID\_Attestation (PK), ID\_Élève (FK), ID\_Programme (FK), DateAttestation, Statut, NuméroAttestation \\
+
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Modèle physique de données }
+Le MPD correspond à la traduction concrète du modèle logique en tables Access, avec les types de données, les contraintes et les relations matérialisées.
+\begin{verbatim}
+ÉLÈVE(
+    ID_Élève AUTONUM PK,
+    Nom TEXT(50),
+    Prénom TEXT(50),
+    DateNaissance DATE,
+    NomParent TEXT(50),
+    EmailParent TEXT(100),
+    Téléphone TEXT(20),
+    École TEXT(50)
+)
+
+PROGRAMME(
+    ID_Programme AUTONUM PK,
+    NomProgramme TEXT(100),
+    Description TEXT,
+    Catégorie TEXT(50),
+    Durée INTEGER
+)
+
+COACH(
+    ID_Coach AUTONUM PK,
+    Nom TEXT(50),
+    Prénom TEXT(50),
+    Spécialité TEXT(100),
+    TypeRémunération TEXT(20),
+    MontantRémunération CURRENCY,
+    Email TEXT(100),
+    Téléphone TEXT(20)
+)
+
+SALLE(
+    ID_Salle AUTONUM PK,
+    NomSalle TEXT(50),
+    CapacitéSalle INTEGER,
+    Localisation TEXT(50)
+)
+
+SÉANCE(
+    ID_Séance AUTONUM PK,
+    JourSemaine TEXT(20),
+    Heure TEXT(10),
+    DateDébut DATE,
+    DateFin DATE,
+    Capacité INTEGER,
+    ID_Programme FK,
+    ID_Coach FK,
+    ID_Salle FK
+)
+
+INSCRIPTION(
+    ID_Inscription AUTONUM PK,
+    DateInscription DATE,
+    Statut TEXT(20),
+    ID_Élève FK,
+    ID_Programme FK
+)
+
+PAIEMENT(
+    ID_Paiement AUTONUM PK,
+    Montant CURRENCY,
+    DatePaiement DATE,
+    ModePaiement TEXT(20),
+    ID_Élève FK
+)
+
+ATTESTATION(
+    ID_Attestation AUTONUM PK,
+    DateAttestation DATE,
+    Statut TEXT(20),
+    NuméroAttestation TEXT(20),
+    ID_Élève FK,
+    ID_Programme FK
+)
+\end{verbatim}
+
+\subsection*{Types de données choisis}
+
+\begin{table}[!htpb]
+    \caption{Correspondance entre types conceptuels et types physiques Access}
+    \label{tab:types-access}
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \setlength{\tabcolsep}{8pt}
+    \begin{tabular}{p{6cm} p{6cm}}
+        \toprule
+        \textbf{Type conceptuel} & \textbf{Type Access (MPD)} \\
+        \midrule
+        Identifiant unique & AUTONUM (AutoNumber) \\
+        Texte court & TEXT(n) \\
+        Texte long & LONG TEXT \\
+        Numérique entier & INTEGER / LONG \\
+        Date & DATE/TIME \\
+        Valeur monétaire & CURRENCY \\
+        Booléen / Statut & YES/NO ou TEXT(20) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
+\subsubsection*{Contraintes d’intégrité}
+\begin{itemize}
+    \item \textbf{Clés primaires (PK)} :  
+    chaque table possède une clé primaire de type AUTONUM garantissant l’unicité des enregistrements.
+    
+    \item \textbf{Clés étrangères (FK)} :  
+    les relations Élève–Inscription, Programme–Séance, Coach–Séance, Salle–Séance, Élève–Paiement et Élève/Programme–Attestation
+    sont matérialisées par des clés étrangères assurant la cohérence des liens.
+    
+    \item \textbf{Intégrité référentielle} :  
+    activée dans toutes les relations, avec \emph{mise à jour en cascade} pour propager les modifications d'identifiants
+    et \emph{interdiction de suppression} lorsqu’un enregistrement enfant existe (pour éviter les données orphelines).
+    
+    \item \textbf{Contraintes de domaine} :  
+    types de données adaptés (dates, montants, longueurs maximales), champs obligatoires pour les attributs critiques.
+\end{itemize}
+
+\section{Normalisation et justification}
+
+L’ensemble des tables du MPD respecte la troisième forme normale (3FN), ce qui garantit l’absence de redondance
+et améliore la cohérence et la maintenabilité du système.
+
+\begin{itemize}
+    \item \textbf{1FN Atomicité} :  
+    tous les attributs sont élémentaires (pas de champs multivalués ou composés).
+    
+    \item \textbf{2FN Dépendances partielles} :  
+    aucune table ne possède de clé primaire composite ; tous les attributs dépendent entièrement de la clé.
+    
+    \item \textbf{3FN Dépendances transitives} :  
+    aucun attribut non-clé ne dépend d’un autre attribut non-clé (par ex. un paiement ne contient pas le nom de l’élève).
+\end{itemize}
+
+Cette normalisation assure une réduction significative des anomalies de mise à jour, de suppression et d’insertion,
+tout en facilitant l’évolution future du système.

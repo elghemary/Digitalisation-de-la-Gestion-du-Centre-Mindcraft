@@ -1,0 +1,369 @@
+\chapter{Implémentation sous Microsoft Access}
+
+Après la finalisation du modèle physique de données, l’étape suivante consiste à implémenter l’application au sein de Microsoft Access.
+Cette phase vise à transformer le schéma conceptuel et logique en un système complètement fonctionnel.
+\section{Création des tables et relations}
+Toutes les tables du MPD ont été créées en mode « Conception » dans Access.
+\begin{table}[H]
+    \caption{Résumé des tables principales de la base de données}
+    \label{tab:tables-principales}
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \setlength{\tabcolsep}{6pt}
+    \begin{tabular}{p{2.5cm} p{8cm} p{3.5cm}}
+        \toprule
+        \textbf{Table} & \textbf{Champs essentiels} & \textbf{Clés} \\
+        \midrule
+        \textbf{tblÉlève} & ID\_Élève, Nom, Prénom, DateNaissance, NomParent, EmailParent, Téléphone, École & ID\_Élève (PK) \\
+        \textbf{tblProgramme} & ID\_Programme, NomProgramme, Description, Catégorie, Durée & ID\_Programme (PK) \\
+        \textbf{tblCoach} & ID\_Coach, Nom, Prénom, Spécialité, Rémunération, Email & ID\_Coach (PK) \\
+        \textbf{tblSalle} & ID\_Salle, NomSalle, CapacitéSalle, Localisation & ID\_Salle (PK) \\
+        \textbf{tblSéance} & ID\_Séance, JourSemaine, Heure, DateDébut, DateFin, Capacité, ID\_Programme, ID\_Coach, ID\_Salle & ID\_Séance (PK), ID\_Programme, ID\_Coach, ID\_Salle (FK) \\
+        \textbf{tblInscription} & ID\_Inscription, DateInscription, Statut, ID\_Élève, ID\_Programme & ID\_Inscription (PK), FKs (Élève, Programme) \\
+        \textbf{tblPaiement} & ID\_Paiement, Montant, DatePaiement, ModePaiement, ID\_Élève & ID\_Paiement (PK), ID\_Élève (FK) \\
+        \textbf{tblAttestation} & ID\_Attestation, DateAttestation, Statut, ID\_Élève, ID\_Programme & ID\_Attestation (PK), FKs (Élève, Programme) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+Chaque table a reçu :
+\begin{itemize}
+    \item sa clé primaire (type : Autonumération),
+    \item les types de données corrects,
+    \item les contraintes de validation nécessaires
+    \item det les clés étrangères définissant les dépendances entre entités.
+\end{itemize}
+\subsection*{Schéma des relations Access}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=15cm]{Figures/relationships.png}
+    \caption{Relations entre les tableaux}
+\end{figure}
+
+\begin{figure}[!htpb]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/tables/tbleleve.png}
+    \caption{Tableau Elève}
+\end{figure}
+
+\noindent
+Les autres tables (\textit{Programme}, \textit{Coach}, \textit{Séance}, etc.) sont présentées en annexe~\ref{annex:tables}.
+
+\section{Requêtes SQL}
+Les requêtes ont été construites pour :
+\begin{itemize}
+    \item filtrer et formater les données affichées dans les formulaires (notamment les zones de liste déroulante),
+    \item produire des statistiques à partir des données de paiement et de présence,
+    \item alimenter les rapports de synthèse et d'attestation.
+\end{itemize}
+
+\subsection{Exemples de requêtes importantes}
+\subsection*{Requêtes utilisées pour les zones de liste déroulante (ComboBox)}
+Afin d'afficher les \textit{noms complets} au lieu des identifiants numériques dans les formulaires (\texttt{Élève}, \texttt{Coach}, \texttt{Programme}, \texttt{Séance}), plusieurs requêtes ont été créées.  
+Ces requêtes, telles que \texttt{qryEleveListe}, \texttt{qryCoachListe}, \texttt{qryProgrammeListe} et \texttt{qrySeanceListe}, permettent de rendre les interfaces plus intuitives pour l'utilisateur.
+
+\paragraph{Exemple : Liste des élèves (qryEleveListe)}
+\begin{verbatim}
+SELECT
+    [tblEleve].[ID_Eleve],
+    [tblEleve].[Nom] & " " & [tblEleve].[Prénom] AS NomComplet,
+    [tblEleve].[Ecole],
+    [tblEleve].[Telephone]
+FROM
+    tblEleve
+ORDER BY
+    [tblEleve].[Nom],
+    [tblEleve].[Prénom];
+\end{verbatim}
+
+Ces requêtes de liste sont également reprises en Annexe~\ref{annex:SQL} pour l’ensemble des tables (\textit{Coach}, \textit{Programme}, \textit{Séance}).
+
+\subsection*{Requête de tableau de bord (vue globale)}
+Cette requête récupère des statistiques globales du centre : nombre total d’élèves, de programmes, de séances, de coachs, et le revenu total cumulé.
+
+\begin{verbatim}
+SELECT
+    Max(
+        (
+            SELECT Count([ID_Eleve]) FROM [tblEleve]
+        )
+    ) AS TotalÉlèves,
+    Max(
+        (
+            SELECT Count([ID_Programme]) FROM [tblProgramme]
+        )
+    ) AS TotalProgrammes,
+    Max(
+        (
+            SELECT Count([ID_Seance]) FROM [tblSéance]
+        )
+    ) AS TotalSéances,
+    Max(
+        (
+            SELECT Count([ID_Coach]) FROM [tblCoach]
+        )
+    ) AS TotalCoachs,
+    Max(
+        (
+            SELECT Sum([Montant]) FROM [tblPaiement]
+        )
+    ) AS RevenuTotal
+FROM
+    tblEleve;
+\end{verbatim}
+
+Elle est utilisée pour alimenter le rapport \texttt{rpt\_TableauDeBordMindcraft}.
+
+Toutes les autres requêtes intermédiaires (de filtrage, de recherche, ou d’alimentation des formulaires) sont détaillées en Annexe~\ref{annex:SQL}
+
+\section{Création des formulaires}
+Les formulaires constituent l’interface principale de l’utilisateur.
+Ils permettent la saisie, la modification et la consultation des données sans avoir à manipuler directement les tables.
+
+\subsection*{Formulaire Élèves}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/formulaire/frmEleve.png}
+    \caption{Formulaire Élève}
+\end{figure}
+Ce formulaire permet la gestion complète des fiches des élèves. 
+L’utilisateur peut y ajouter, modifier ou supprimer un enregistrement. 
+Les champs principaux comprennent le nom, le prénom, la date de naissance, l’école et le contact du parent. 
+Des boutons de navigation facilitent le passage entre les fiches, 
+et un message d’alerte s’affiche en cas de champ obligatoire non renseigné.
+
+\subsection*{Formulaire Coach}
+Ce formulaire regroupe toutes les informations relatives aux coachs : identité, spécialité, type de rémunération et coordonnées.
+Le formulaire affiche également, sous forme de tableau, la liste des séances associées à chaque coach.
+Il facilite la mise à jour du personnel encadrant et permet d’assigner ensuite les coachs aux séances correspondantes.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/formulaire/frmFormateur.png}
+    \caption{Formulaire Coach}
+\end{figure}
+
+\subsection*{Menu principal}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{Figures/formulaire/frmMenu.png}
+    \caption{Tableau Menu}
+\end{figure}
+Le menu principal constitue la page d’accueil de l’application Access. 
+Il regroupe, sous forme de boutons les accès directs aux différents formulaires, requêtes et rapports.
+Il organise la navigation et améliore considérablement l’ergonomie de l’application.
+\\
+Les autres formulaires (\textit{Programme}, \textit{Coach}, \textit{Séance}, etc.) sont présentées en annexe~\ref{annex:tables}.
+
+\subsection*{Cohérence visuelle}
+Tous les formulaires partagent une même charte graphique : 
+couleurs harmonisées, polices uniformes et disposition cohérente des boutons. 
+Cette uniformité renforce l’identité visuelle de l’application et facilite la prise en main. 
+Chaque formulaire a été testé afin d’assurer la stabilité, la rapidité et la simplicité d’utilisation de l’ensemble du système.
+
+\section{Automatisation avec VBA}
+L’intégration du langage \textbf{VBA (Visual Basic for Applications)} a joué un rôle essentiel dans 
+l’automatisation de nombreuses opérations de l’application Access et dans l’amélioration de 
+l’expérience utilisateur. 
+Chaque formulaire de gestion (Élève, Coach, Programme, Séance, Inscription, Paiement) 
+inclut des procédures VBA permettant la recherche dynamique, la validation des entrées, 
+la navigation fluide et la sécurisation des actions critiques.
+
+Les extraits suivants illustrent les mécanismes VBA clés implémentés dans l’application.  
+
+\subsection*{Recherche dynamique dans les formulaires}
+Chaque formulaire dispose d’une zone de recherche permettant de filtrer immédiatement les enregistrements 
+en fonction du nom ou du prénom saisi par l’utilisateur.
+\begin{verbatim}
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchStudent, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+
+    q = Replace(q, "'", "''")
+    Me.Filter = "[Nom] LIKE '*" & q & "*' OR [Prénom] LIKE '*" & q & "*'"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchStudent = Null
+    Me.FilterOn = False
+End Sub
+\end{verbatim}
+
+\subsection*{ Gestion des enregistrements (ajout, sauvegarde, suppression)}
+Les formulaires disposent de commandes permettant :
+\begin{itemize}
+    \item d’ajouter un nouvel enregistrement,
+    \item de sauvegarder les modifications,
+    \item de supprimer un enregistrement après confirmation.
+\end{itemize}
+
+\begin{verbatim}
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+    If Not Me.NewRecord Then
+        DoCmd.GoToRecord , , acNewRec
+    End If
+End Sub
+
+Private Sub cmdSave_Click()
+    DoCmd.RunCommand acCmdSaveRecord
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Delete this student?", vbYesNo + vbQuestion, "Confirm") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+    End If
+End Sub
+\end{verbatim}
+
+\subsection*{ Validation automatique avant enregistrement}
+Avant de sauvegarder un élève ou une modification, plusieurs vérifications 
+sont automatiquement appliquées pour garantir la cohérence des données :
+\begin{itemize}
+    \item champs obligatoires (Nom, Prénom),
+    \item date de naissance non future,
+    \item adresse e-mail valide.
+\end{itemize}
+
+\begin{verbatim}
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+
+    If Nz(Me.Nom, "") = "" Then
+        MsgBox "Please enter the student's last name.", vbExclamation
+        Me.Nom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    If Nz(Me.Prénom, "") = "" Then
+        MsgBox "Please enter the student's first name.", vbExclamation
+        Me.Prénom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    If Not IsNull(Me.DateNaissance) Then
+        If Me.DateNaissance > Date Then
+            MsgBox "Birth date cannot be in the future.", vbExclamation
+            Me.DateNaissance.SetFocus
+            Cancel = True
+            Exit Sub
+        End If
+    End If
+
+    If Nz(Me.EmailParent, "") <> "" Then
+        Dim e As String
+        e = Me.EmailParent
+        If InStr(e, "@") = 0 Or InStrRev(e, ".") < InStr(e, "@") + 2 Then
+            MsgBox "Please enter a valid parent email.", vbExclamation
+            Me.EmailParent.SetFocus
+            Cancel = True
+        End If
+    End If
+
+End Sub
+\end{verbatim}
+
+\subsection*{ Navigation entre formulaires}
+Depuis le menu principal, chaque bouton ouvre un formulaire spécifique pour faciliter la navigation.
+
+\begin{verbatim}
+Private Sub cmdEleves_Click()
+    DoCmd.OpenForm "frmEleves"
+End Sub
+
+Private Sub cmdPaiements_Click()
+    DoCmd.OpenForm "frmPaiements"
+End Sub
+\end{verbatim}
+
+Toutes les autres procédures VBA spécifiques aux formulaires
+(\texttt{frmCoach}, \texttt{frmProgramme}, \texttt{frmSéance}, \texttt{frmInscription}, \texttt{frmPaiement})
+sont listées intégralement en annexe~\ref{annex:VBA}.
+
+
+\section{Création des rapports}
+
+Les rapports ont été conçus afin de fournir à la direction du centre une vue d’ensemble claire, 
+synthétique et professionnelle des données enregistrées dans la base. 
+Ils permettent non seulement de visualiser les informations essentielles, 
+mais également de les regrouper, trier et analyser selon différents critères pertinents. 
+Chaque rapport peut être imprimé directement ou exporté automatiquement au format PDF
+grâce aux procédures VBA intégrées.
+
+\subsection{Tableau de bord}
+Ce rapport présente une vue globale du fonctionnement du centre :
+nombre total d’élèves, nombre de programmes actifs, nombre de séances planifiées, 
+effectif des coachs et revenu total généré.  
+Ces indicateurs sont calculés à l’aide de sous-requêtes SQL et affichés sous forme de 
+cartes synthétiques pour une consultation rapide par la direction.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptTableauBoard.png}
+    \caption{Tableau de Board}
+\end{figure}
+
+\subsection*{Participation par programme}
+Ce rapport regroupe, pour chaque programme, plusieurs informations essentielles :
+le nombre de séances planifiées, le nombre d’élèves distincts inscrits et 
+le revenu total associé.  
+Il permet d’évaluer la performance de chaque formation, d’optimiser la planification 
+et d’orienter les décisions pédagogiques et financières du centre.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptProgramme.png}
+    \caption{Rapport des Inscriptions par programme}
+\end{figure}
+
+\subsection*{Attestation de participation}
+Ce rapport génère automatiquement une attestation personnalisée pour chaque élève.
+Les données affichées (nom complet, programme suivi, période de participation et nom du coach) 
+proviennent d’une requête agrégée dédiée.  
+Le certificat peut être imprimé individuellement depuis le formulaire Élève ou en lot 
+depuis le menu principal, et peut également être exporté au format PDF.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptAttestation.png}
+    \caption{Rapport Attestation}
+\end{figure}
+
+\subsection*{Relevé des paiements par élève}
+Ce rapport présente l’historique détaillé des paiements effectués par chaque élève : 
+montants versés, période payée, date de règlement, programme concerné et séance associée.  
+Les données sont triées chronologiquement, et un total par élève est calculé automatiquement.  
+Ce rapport constitue l’outil principal pour le suivi financier individuel et la détection 
+des paiements manquants ou incomplets.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptPaiementParEleve.png}
+    \caption{Rapport paiement par élève}
+\end{figure}
+
+\subsection*{Résumé des paiements mensuels}
+Ce rapport regroupe tous les paiements du centre par mois et calcule :
+le nombre total de paiements, le montant cumulé du mois et le montant moyen par élève.  
+Il fournit une vue claire de l’évolution des revenus mensuels du centre et facilite 
+le suivi comptable, la planification budgétaire et la prise de décision stratégique.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptPaiementMensuels.png}
+    \caption{Rapport Paiement mensuels}
+\end{figure}
+
+\subsection*{Emploi du temps hebdomadaire}
+Ce rapport présente l’ensemble des séances planifiées au cours de la semaine.  
+Les données affichées incluent le jour, l’heure, le programme, le coach responsable 
+et la salle assignée lorsqu’elle est renseignée.  
+Les séances sont triées chronologiquement (du lundi au samedi) puis par horaire, 
+ce qui permet une lecture fluide et intuitive du planning.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{Figures/Rapports/rptEmploiDuTemps.png}
+    \caption{Rapport Emploi du Temps}
+\end{figure}

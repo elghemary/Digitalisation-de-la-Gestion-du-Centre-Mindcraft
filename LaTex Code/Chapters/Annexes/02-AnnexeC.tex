@@ -1,0 +1,698 @@
+\chapter{Annexe C: Code VBA}
+\label{annex:VBA}
+
+\section*{Formulaire Eleve}
+\begin{verbatim}
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchStudent, "")
+    
+    If Len(q) = 0 Then
+        ' No text ? remove filter
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    ' Escape single quotes in the search text
+    q = Replace(q, "'", "''")
+    
+    ' Filter on Nom or Prenom contains the typed text (case-insensitive)
+    Me.Filter = "[Nom] LIKE '*" & q & "*' OR [Prénom] LIKE '*" & q & "*'"
+    Me.FilterOn = True
+End Sub
+
+
+Private Sub cmdClear_Click()
+    Me.txtSearchStudent = Null
+    Me.FilterOn = False
+End Sub
+
+
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+    If Not Me.NewRecord Then
+        ' Safety: ensure we’re really on a new record
+        DoCmd.GoToRecord , , acNewRec
+    End If
+End Sub
+
+
+Private Sub cmdSave_Click()
+    ' Triggers BeforeUpdate; then saves if validation passes
+    DoCmd.RunCommand acCmdSaveRecord
+End Sub
+
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Delete this student?", vbYesNo + vbQuestion, "Confirm") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+    End If
+End Sub
+
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Nom and Prenom must not be empty
+    If Nz(Me.Nom, "") = "" Then
+        MsgBox "Please enter the student's last name.", vbExclamation, "Missing last name"
+        Me.Nom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    If Nz(Me.Prénom, "") = "" Then
+        MsgBox "Please enter the student's first 
+        name.", vbExclamation, "Missing first name"
+        Me.Prénom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' DateNaissance: if filled, must be <= Today
+    If Not IsNull(Me.DateNaissance) Then
+        If Me.DateNaissance > Date Then
+            MsgBox "Birth date cannot be in the future.", vbExclamation, "Invalid date"
+            Me.DateNaissance.SetFocus
+            Cancel = True
+            Exit Sub
+        End If
+    End If
+    
+    ' EmailParent: simple check (contains @ and . after)
+    If Nz(Me.EmailParent, "") <> "" Then
+        Dim e As String
+        e = Me.EmailParent
+        If InStr(e, "@") = 0 Or InStrRev(e, ".") < InStr(e, "@") + 2 Then
+            MsgBox "Please enter a valid parent email.", vbExclamation, "Invalid email"
+            Me.EmailParent.SetFocus
+            Cancel = True
+            Exit Sub
+        End If
+    End If
+End Sub
+
+
+\end{verbatim}
+
+\section*{Formulaire Coach}
+\begin{verbatim}
+' ==============================
+' ======== SEARCH / CLEAR =====
+' ==============================
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchCoach, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    q = Replace(q, "'", "''")
+    ' Filtrer par nom, prénom ou spécialité
+    Me.Filter = "([Nom] LIKE '*" & q & "*') OR ([Prénom] LIKE '*" & q & "*') OR 
+    ([Spécialité] LIKE '*" & q & "*')"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchCoach = Null
+    Me.FilterOn = False
+End Sub
+
+
+' ==============================
+' ======== NEW / SAVE / DELETE =
+' ==============================
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+End Sub
+
+Private Sub cmdSave_Click()
+    On Error GoTo Err_Save
+    If Me.Dirty Then
+        DoCmd.RunCommand acCmdSaveRecord
+        MsgBox "Coach enregistré avec succès.", vbInformation, "Sauvegarde"
+    End If
+    Exit Sub
+Err_Save:
+    MsgBox "Erreur lors de l’enregistrement : " & Err.Description, vbCritical, "Erreur"
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Voulez-vous vraiment supprimer ce coach ?", vbYesNo + vbQuestion, 
+    "Confirmation") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+        MsgBox "Coach supprimé.", vbInformation
+    End If
+End Sub
+
+
+' ==============================
+' ======== NAVIGATION ==========
+' ==============================
+Private Sub cmdPrev_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+
+Private Sub cmdNext_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acNext
+End Sub
+
+
+' ==============================
+' ======== VALIDATION ==========
+' ==============================
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Vérifier le nom
+    If Nz(Me.Nom, "") = "" Then
+        MsgBox "Veuillez saisir le nom du coach.", vbExclamation, "Nom requis"
+        Me.Nom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    ' Vérifier le prénom
+    If Nz(Me.Prénom, "") = "" Then
+        MsgBox "Veuillez saisir le prénom du coach.", vbExclamation, "Prénom requis"
+        Me.Prénom.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    ' Vérifier l'email
+    If Nz(Me.Email, "") <> "" Then
+        Dim e As String
+        e = Me.Email
+        If InStr(e, "@") = 0 Or InStrRev(e, ".") < InStr(e, "@") + 2 Then
+            MsgBox "Veuillez saisir une adresse email valide.", vbExclamation, 
+            "Email invalide"
+            Me.Email.SetFocus
+            Cancel = True
+            Exit Sub
+        End If
+    End If
+
+    ' Vérifier le type de rémunération
+    If Nz(Me.TypeRémunération, "") = "" Then
+        MsgBox "Veuillez indiquer le type de rémunération.", vbExclamation,
+        "Champ requis"
+        Me.TypeRémunération.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    ' Vérifier le montant de rémunération
+    If Nz(Me.MontantRémuneration, 0) < 0 Then
+        MsgBox "Le montant de rémunération ne peut pas être négatif.", vbExclamation,
+        "Valeur invalide"
+        Me.MontantRémuneration.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+
+\end{verbatim}
+
+\section*{Formulaire Inscription}
+\begin{verbatim}
+' ==============================
+' ======== SEARCH / CLEAR =====
+' ==============================
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchInscription, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    q = Replace(q, "'", "''")
+    
+    ' Filtrer par nom/prénom de l'élève ou par séance (jour ou heure)
+    Me.Filter = "([ID_Eleve] IN (SELECT ID_Eleve FROM tblEleve WHERE Nom LIKE '*" & q & "*' OR Prénom LIKE '*" & q 
+    & "*')) OR " & _
+                "([ID_Séance] IN (SELECT ID_Séance FROM tblSéance WHERE JourSemaine 
+                LIKE '*" & q & "*' OR Heure LIKE '*" & q & "*'))"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchInscription = Null
+    Me.FilterOn = False
+End Sub
+
+
+' ==============================
+' ======== NEW / SAVE / DELETE =
+' ==============================
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+End Sub
+
+Private Sub cmdSave_Click()
+    On Error GoTo Err_Save
+    If Me.Dirty Then
+        DoCmd.RunCommand acCmdSaveRecord
+        MsgBox "Inscription enregistrée avec succès.", vbInformation, "Sauvegarde"
+    End If
+    Exit Sub
+Err_Save:
+    MsgBox "Erreur lors de l’enregistrement : " & Err.Description, vbCritical, "Erreur"
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Voulez-vous vraiment supprimer cette inscription ?", vbYesNo + vbQuestion,
+    "Confirmation") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+        MsgBox "Inscription supprimée.", vbInformation
+    End If
+End Sub
+
+
+' ==============================
+' ======== NAVIGATION ==========
+' ==============================
+Private Sub cmdPrev_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+
+Private Sub cmdNext_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acNext
+End Sub
+
+
+' ==============================
+' ======== VALIDATION ==========
+' ==============================
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Élève requis
+    If IsNull(Me.ID_Eleve) Or Me.ID_Eleve = 0 Then
+        MsgBox "Veuillez choisir un élève.", vbExclamation, "Élève requis"
+        If ControlExists("cboEleve") Then Me.cboEleve.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Séance requise
+    If IsNull(Me.ID_Séance) Or Me.ID_Séance = 0 Then
+        MsgBox "Veuillez choisir une séance.", vbExclamation, "Séance requise"
+        If ControlExists("cboSeance") Then Me.cboSeance.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Montant payé
+    If Nz(Me.MontantPayé, 0) < 0 Then
+        MsgBox "Le montant payé ne peut pas être négatif.", vbExclamation, "Montant 
+        invalide"
+        Me.MontantPayé.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+
+' ==============================
+' ======== COMBO CASCADE =======
+' ==============================
+Private Sub cboEleve_AfterUpdate()
+    On Error Resume Next
+    If ControlExists("cboSeance") Then
+        Me.cboSeance.Requery
+        Me.cboSeance = Null
+    End If
+End Sub
+
+
+' ==============================
+' ======== UTILITY ============
+' ==============================
+' Vérifie si un contrôle existe avant de l’utiliser
+Private Function ControlExists(ctrlName As String) As Boolean
+    On Error Resume Next
+    ControlExists = Not (Me.Controls(ctrlName) Is Nothing)
+End Function
+
+
+\end{verbatim}
+
+\section*{Formulaire Menu}
+\begin{verbatim}
+Private Sub cmdTableauDeBord_Click()
+    DoCmd.OpenReport "rpt_TableauDeBordMindcraft", acViewPreview
+End Sub
+
+Private Sub cmdProgrammeParticipation_Click()
+    DoCmd.OpenReport "qryB_ProgrammeParticipation", acViewPreview
+End Sub
+
+Private Sub cmdAttestation_Click()
+    DoCmd.OpenReport "rpt_AttestationParticipation", acViewPreview
+End Sub
+
+Private Sub cmdRelevePaiements_Click()
+    DoCmd.OpenReport "rpt_RelevePaiementParEleve", acViewPreview
+End Sub
+
+Private Sub cmdResumePaiementsMensuels_Click()
+    DoCmd.OpenReport "rpt_RésuméPaiementsMensuels", acViewPreview
+End Sub
+
+
+\end{verbatim}
+
+\section*{Formulaire Paiement}
+\begin{verbatim}
+' ==============================
+' ======== SEARCH / CLEAR =====
+' ==============================
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchPaiement, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    q = Replace(q, "'", "''")
+    
+    ' Filtrer par nom/prénom de l'élève ou par séance (jour/heure)
+    Me.Filter = "([ID_Eleve] IN (SELECT ID_Eleve FROM tblEleve WHERE Nom LIKE '*" & q 
+    & "*' OR Prénom LIKE '*" & q & "*')) OR " & _
+                "([ID_Séance] IN (SELECT ID_Séance FROM tblSéance WHERE JourSemaine 
+                LIKE '*" & q & "*' OR Heure LIKE '*" & q & "*'))"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchPaiement = Null
+    Me.FilterOn = False
+End Sub
+
+
+' ==============================
+' ======== NEW / SAVE / DELETE =
+' ==============================
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+End Sub
+
+Private Sub cmdSave_Click()
+    On Error GoTo Err_Save
+    If Me.Dirty Then
+        DoCmd.RunCommand acCmdSaveRecord
+        MsgBox "Paiement enregistré avec succès.", vbInformation, "Sauvegarde"
+    End If
+    Exit Sub
+Err_Save:
+    MsgBox "Erreur lors de l’enregistrement : " & Err.Description, vbCritical, "Erreur"
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Voulez-vous vraiment supprimer ce paiement ?", vbYesNo + vbQuestion, 
+    "Confirmation") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+        MsgBox "Paiement supprimé.", vbInformation
+    End If
+End Sub
+
+
+' ==============================
+' ======== NAVIGATION ==========
+' ==============================
+Private Sub cmdPrev_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+
+Private Sub cmdNext_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acNext
+End Sub
+
+
+' ==============================
+' ======== VALIDATION ==========
+' ==============================
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Élève requis
+    If IsNull(Me.ID_Eleve) Or Me.ID_Eleve = 0 Then
+        MsgBox "Veuillez choisir un élève.", vbExclamation, "Élève requis"
+        If ControlExists("cboEleve") Then Me.cboEleve.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Séance requise
+    If IsNull(Me.ID_Séance) Or Me.ID_Séance = 0 Then
+        MsgBox "Veuillez choisir une séance.", vbExclamation, "Séance requise"
+        If ControlExists("cboSeance") Then Me.cboSeance.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Montant requis
+    If Nz(Me.Montant, 0) <= 0 Then
+        MsgBox "Veuillez saisir un montant valide.", vbExclamation, "Montant invalide"
+        Me.Montant.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+
+' ==============================
+' ======== COMBO CASCADE =======
+' ==============================
+Private Sub cboEleve_AfterUpdate()
+    On Error Resume Next
+    If ControlExists("cboSeance") Then
+        Me.cboSeance.Requery
+        Me.cboSeance = Null
+    End If
+End Sub
+
+
+' ==============================
+' ======== UTILITY ============
+' ==============================
+' Vérifie si un contrôle existe avant de l'utiliser
+Private Function ControlExists(ctrlName As String) As Boolean
+    On Error Resume Next
+    ControlExists = Not (Me.Controls(ctrlName) Is Nothing)
+End Function
+
+\end{verbatim}
+
+\section*{Formulaire Programme}
+\begin{verbatim}
+' ==============================
+' ======== SEARCH / CLEAR =====
+' ==============================
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchProgramme, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    q = Replace(q, "'", "''")
+    ' Filtrer par nom ou catégorie
+    Me.Filter = "([NomProgramme] LIKE '*" & q & "*') OR ([Catégorie] LIKE '*" & q & "*')"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchProgramme = Null
+    Me.FilterOn = False
+End Sub
+
+
+' ==============================
+' ======== NEW / SAVE / DELETE =
+' ==============================
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+End Sub
+
+Private Sub cmdSave_Click()
+    On Error GoTo Err_Save
+    If Me.Dirty Then
+        DoCmd.RunCommand acCmdSaveRecord
+        MsgBox "Programme enregistré avec succès.", vbInformation, "Sauvegarde"
+    End If
+    Exit Sub
+Err_Save:
+    MsgBox "Erreur lors de l’enregistrement : " & Err.Description, vbCritical, "Erreur"
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Voulez-vous vraiment supprimer ce programme ?", vbYesNo + vbQuestion, 
+    "Confirmation") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+        MsgBox "Programme supprimé.", vbInformation
+    End If
+End Sub
+
+
+' ==============================
+' ======== NAVIGATION ==========
+' ==============================
+Private Sub cmdPrev_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+
+Private Sub cmdNext_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acNext
+End Sub
+
+
+' ==============================
+' ======== VALIDATION ==========
+' ==============================
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Vérifier le nom du programme
+    If Nz(Me.NomProgramme, "") = "" Then
+        MsgBox "Veuillez saisir le nom du programme.", vbExclamation, "Nom requis"
+        Me.NomProgramme.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+
+    ' Vérifier la catégorie
+    ' ?? Access ne gère pas les accents dans les noms de champs VBA ? utiliser le vrai 
+    nom de champ
+    ' Si ton champ s'appelle [Catégorie] avec accent, renomme-le sans accent dans 
+    la table (ex: Categorie)
+    If Nz(Me.Catégorie, "") = "" Then
+        MsgBox "Veuillez saisir la catégorie du programme.", vbExclamation, "Catégorie 
+        requise"
+        Me.Catégorie.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+End Sub
+
+
+\end{verbatim}
+\section*{Formulaire Séance}
+\begin{verbatim}
+' ==============================
+' ======== SEARCH / CLEAR =====
+' ==============================
+Private Sub cmdSearch_Click()
+    Dim q As String
+    q = Nz(Me.txtSearchSeance, "")
+    
+    If Len(q) = 0 Then
+        Me.FilterOn = False
+        Exit Sub
+    End If
+    
+    q = Replace(q, "'", "''")
+    
+    ' Filter by Jour, Heure, Programme, or Coach
+    Me.Filter = "([JourSemaine] LIKE '*" & q & "*') OR " & _
+                "([Heure] LIKE '*" & q & "*') OR " & _
+                "([ID_Programme] IN (SELECT ID_Programme FROM tblProgramme WHERE 
+                NomProgramme LIKE '*" & q & "*')) OR " & _
+                "([ID_Coach] IN (SELECT ID_Coach FROM tblCoach WHERE Nom LIKE 
+                '*" & q & "*' OR Prénom LIKE '*" & q & "*'))"
+    Me.FilterOn = True
+End Sub
+
+Private Sub cmdClear_Click()
+    Me.txtSearchSeance = Null
+    Me.FilterOn = False
+End Sub
+
+
+' ==============================
+' ======== NEW / SAVE / DELETE =
+' ==============================
+Private Sub cmdNew_Click()
+    DoCmd.GoToRecord , , acNewRec
+End Sub
+
+Private Sub cmdSave_Click()
+    If Me.Dirty Then
+        DoCmd.RunCommand acCmdSaveRecord
+        MsgBox "Séance enregistrée avec succès.", vbInformation, "Sauvegarde"
+    End If
+End Sub
+
+Private Sub cmdDelete_Click()
+    If Me.NewRecord Then Exit Sub
+    If MsgBox("Voulez-vous vraiment supprimer cette séance ?", vbYesNo + 
+    vbQuestion, "Confirmation") = vbYes Then
+        DoCmd.RunCommand acCmdDeleteRecord
+        MsgBox "Séance supprimée.", vbInformation
+    End If
+End Sub
+
+
+' ==============================
+' ======== NAVIGATION ==========
+' ==============================
+Private Sub cmdPrev_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acPrevious
+End Sub
+
+Private Sub cmdNext_Click()
+    On Error Resume Next
+    DoCmd.GoToRecord , , acNext
+End Sub
+
+
+' ==============================
+' ======== VALIDATION ==========
+' ==============================
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+    ' Vérification du programme
+    If IsNull(Me.ID_Programme) Or Me.ID_Programme = 0 Then
+        MsgBox "Veuillez choisir un programme.", vbExclamation, "Programme requis"
+        Me.cboProgramme.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Vérification du coach
+    If IsNull(Me.ID_Coach) Or Me.ID_Coach = 0 Then
+        MsgBox "Veuillez choisir un coach.", vbExclamation, "Coach requis"
+        Me.cboCoach.SetFocus
+        Cancel = True
+        Exit Sub
+    End If
+    
+    ' Vérification de la cohérence des dates
+    If Not IsNull(Me.DateDébut) And Not IsNull(Me.DateFin) Then
+        If Me.DateFin < Me.DateDébut Then
+            MsgBox "La date de fin doit être postérieure à la date de début.", 
+            vbExclamation, "Dates invalides"
+            Me.DateFin.SetFocus
+            Cancel = True
+            Exit Sub
+        End If
+    End If
+End Sub
+
+
+
+\end{verbatim}

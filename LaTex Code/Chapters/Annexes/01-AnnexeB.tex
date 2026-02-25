@@ -1,0 +1,200 @@
+\chapter{Annexe B: Code SQL}
+\label{annex:SQL}
+
+\section{Requête de génération d’attestation de participation}
+Cette requête permet d’obtenir une ligne par élève avec le nom du programme, le coach, et la période de formation.  
+Elle est utilisée comme source de données du rapport \texttt{rpt\_AttestationParticipation}.
+
+\begin{verbatim}
+SELECT
+    [tblEleve].[ID_Eleve],
+    [tblEleve].[Nom] & " " & [tblEleve].[Prénom] AS NomComplet,
+    First ([tblProgramme].[NomProgramme]) AS NomProgramme,
+    Min([tblSéance].[DateDébut]) AS DateDébut,
+    Max([tblSéance].[DateFin]) AS DateFin,
+    First ([tblCoach].[Nom] & " " & [tblCoach].[Prénom]) AS NomCoach
+FROM
+    (
+        (
+            (
+                tblEleve
+                INNER JOIN tblPaiement ON [tblEleve].[ID_Eleve] = [tblPaiement].[ID_Eleve]
+            )
+            INNER JOIN tblSéance ON [tblPaiement].[ID_Séance] = [tblSéance].[ID_Seance]
+        )
+        INNER JOIN tblProgramme ON [tblSéance].[ID_Programme] = [tblProgramme].[ID_Programme]
+    )
+    INNER JOIN tblCoach ON [tblSéance].[ID_Coach] = [tblCoach].[ID_Coach]
+GROUP BY
+    [tblEleve].[ID_Eleve],
+    [tblEleve].[Nom],
+    [tblEleve].[Prénom];
+\end{verbatim}
+
+\section{Requête de résumé des paiements mensuels}
+Cette requête regroupe les paiements par mois et calcule les totaux et moyennes.  
+Elle alimente le rapport \texttt{rpt\_RésuméPaiementsMensuels}.
+
+\begin{verbatim}
+SELECT
+    Format([DatePaiement], "mmmm yyyy") AS Mois,
+    Count([ID_Paiement]) AS NbPaiements,
+    Sum([Montant]) AS TotalMensuel,
+    Round(Avg([Montant]), 2) AS MontantMoyen
+FROM
+    tblPaiement
+GROUP BY
+    Format([DatePaiement], "mmmm yyyy")
+ORDER BY
+    Min([DatePaiement]);
+\end{verbatim}
+
+\section{Nombre d'élèves distincts par programme}
+Cette requête permet de compter le nombre d'élèves inscrits dans chaque programme, 
+en tenant compte des participations distinctes.  
+Elle est utilisée dans le rapport \\\texttt{rpt\_ParticipationParProgramme}.
+
+\begin{verbatim}
+SELECT
+    q.ID_Programme,
+    COUNT(*) AS Nb_Élèves
+FROM
+    (
+        SELECT DISTINCT
+            pa.ID_Eleve,
+            pr.ID_Programme
+        FROM
+            (
+                tblProgramme AS pr
+                INNER JOIN tblSéance AS se ON pr.ID_Programme = se.ID_Programme
+            )
+            INNER JOIN tblPaiement AS pa ON se.ID_Seance = pa.ID_Séance
+    ) AS q
+GROUP BY
+    q.ID_Programme;
+\end{verbatim}
+
+\section{Nombre de séances par programme}
+Cette requête calcule le nombre total de séances planifiées pour chaque programme.
+
+\begin{verbatim}
+SELECT
+    ID_Programme,
+    COUNT(ID_Seance) AS NbSéances
+FROM
+    tblSéance
+GROUP BY
+    ID_Programme;
+\end{verbatim}
+
+\section{Synthèse complète par programme}
+Cette requête combine plusieurs sous-requêtes (\texttt{NbSéances}, \texttt{NbÉlèves},
+\texttt{RevenusParProgramme})  
+pour produire un tableau complet : nombre de séances, nombre d'élèves distincts,
+et revenus totaux par programme.  
+Elle constitue la base du rapport \texttt{rpt\_ParticipationParProgramme}.
+
+\begin{verbatim}
+SELECT
+    p.NomProgramme,
+    s.NbSéances,
+    e.Nb_Élèves,
+    r.TotalRevenus
+FROM
+    (
+        (
+            tblProgramme AS p
+            LEFT JOIN qryB_NbSeances_ParProgramme AS s 
+                ON p.ID_Programme = s.ID_Programme
+        )
+        LEFT JOIN qryB_NbElevesDistinct_ParProgramme AS e 
+            ON p.ID_Programme = e.ID_Programme
+    )
+    LEFT JOIN qryB_Revenus_ParProgramme AS r 
+        ON p.ID_Programme = r.ID_Programme
+ORDER BY
+    p.NomProgramme;
+\end{verbatim}
+
+\section{Revenus totaux par programme}
+Cette requête calcule le revenu total généré par chaque programme.  
+Elle est utilisée dans la synthèse \texttt{rpt\_ParticipationParProgramme}.
+
+\begin{verbatim}
+SELECT
+    pr.ID_Programme,
+    Sum(pa.Montant) AS TotalRevenus
+FROM
+    (
+        tblProgramme AS pr
+        INNER JOIN tblSéance AS se ON pr.ID_Programme = se.ID_Programme
+    )
+    INNER JOIN tblPaiement AS pa ON se.ID_Seance = pa.ID_Séance
+GROUP BY
+    pr.ID_Programme;
+\end{verbatim}
+
+\section{Suivi détaillé des paiements par élève}
+Cette requête fournit un historique complet des paiements par élève,
+avec le programme, la séance, le montant et la période couverte.  
+Elle est utilisée dans le rapport \texttt{rpt\_RelevéPaiementsÉlève}.
+
+\begin{verbatim}
+SELECT
+    tblEleve.Nom & " " & tblEleve.Prénom AS NomÉlève,
+    tblProgramme.NomProgramme,
+    tblSéance.JourSemaine,
+    tblSéance.Heure,
+    tblPaiement.Montant,
+    tblPaiement.PériodePaiement,
+    tblPaiement.DatePaiement
+FROM
+    (
+        (
+            (
+                tblEleve
+                INNER JOIN tblPaiement 
+                    ON tblEleve.ID_Eleve = tblPaiement.ID_Eleve
+            )
+            INNER JOIN tblSéance 
+                ON tblPaiement.ID_Séance = tblSéance.ID_Seance
+        )
+        INNER JOIN tblProgramme 
+            ON tblSéance.ID_Programme = tblProgramme.ID_Programme
+    )
+    LEFT JOIN tblCoach 
+        ON tblSéance.ID_Coach = tblCoach.ID_Coach
+ORDER BY
+    tblEleve.Nom,
+    tblProgramme.NomProgramme,
+    tblPaiement.DatePaiement;
+\end{verbatim}
+
+\section{Emploi du temps hebdomadaire}
+Cette requête agrège les séances, programmes, coachs et salles pour générer 
+l'emploi du temps imprimable du centre.  
+Elle est utilisée par le rapport \texttt{rpt\_EmploiDuTemps}.
+
+\begin{verbatim}
+SELECT
+    S.JourSemaine,
+    S.Heure,
+    P.NomProgramme,
+    C.Nom & " " & C.Prénom AS Coach,
+    Sa.NomSalle
+FROM
+    (
+        (
+            tblSéance AS S
+            INNER JOIN tblProgramme AS P 
+                ON S.ID_Programme = P.ID_Programme
+        )
+        INNER JOIN tblCoach AS C 
+            ON S.ID_Coach = C.ID_Coach
+    )
+    LEFT JOIN tblSalle AS Sa 
+        ON S.ID_Salle = Sa.ID_Salle
+ORDER BY
+    S.JourSemaine,
+    S.Heure;
+\end{verbatim}

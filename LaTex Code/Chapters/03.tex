@@ -1,0 +1,97 @@
+\chapter{Analyse Fonctionnelle}
+
+L’analyse fonctionnelle a pour but d’identifier et de décrire les besoins du centre Mindcraft afin de concevoir une application cohérente, simple d’utilisation et conforme à la réalité du terrain.
+Elle vise à traduire les attentes des utilisateurs en fonctions concrètes que le système devra offrir, tout en respectant les contraintes techniques et organisationnelles du centre.
+
+\section{Périmètre fonctionnel}
+Le système développé couvre les besoins essentiels de gestion au sein d’un centre de formation. Il permet notamment :
+\begin{itemize}
+    \item La gestion des élèves (création, mise à jour et consultation).
+    \item La gestion des coachs et de leurs informations associées.
+    \item La gestion des programmes pédagogiques proposés.
+    \item La gestion des séances (planning, coach assigné, capacité…).
+    \item La gestion des inscriptions aux programmes / séances.
+    \item L’enregistrement et le suivi des paiements.
+    \item La génération de rapports et d’états imprimables.
+    \item La production d’attestations de participation.
+    \item L’accès à un menu principal facilitant la navigation entre les différentes composantes.   
+\end{itemize}
+
+\section{Acteurs du système}
+Le système comporte deux acteurs principaux qui interagissent avec l’application :
+\subsection*{Administrateur}
+C’est l’utilisateur principal de l’application. Il peut :
+\begin{itemize}
+    \item gérer les élèves, coachs, programmes et séances ;
+    \item inscrire des élèves dans des séances ;
+    \item enregistrer des paiements et éditer des reçus ;
+    \item générer des rapports variés (paiements, participations, tableau de bord) ;
+    \item mettre à jour les données ou corriger les informations existantes.
+\end{itemize}
+
+\subsection*{Coach}
+Dans cette version, le coach dispose d’un rôle informatif. Il peut :
+\begin{itemize}
+    \item consulter les séances auxquelles il est assigné ;
+    \item vérifier la liste des élèves inscrits à ses séances ;
+    \item consulter le programme associé à sa mission.
+\end{itemize}
+
+Chaque fonctionnalité est conçue pour répondre à un besoin réel observé dans la gestion quotidienne du centre.
+
+\begin{itemize}
+    \item \textbf{Réduire la charge administrative} en automatisant la saisie et la mise à jour des informations ;
+    \item \textbf{Assurer la cohérence des données} grâce à l’intégrité référentielle et à la normalisation des tables ;
+    \item \textbf{Améliorer la visibilité} des activités du centre à travers des rapports synthétiques et précis ;
+    \item \textbf{Simplifier l’accès à l’information} via une interface claire et une navigation intuitive.
+\end{itemize}
+
+\section{Cas d’utilisation}
+Les cas d’utilisation représentent les interactions principales entre les acteurs et le système.
+Les fonctionnalités essentielles se déclinent comme suit :
+\subsection*{Use Case 1: Gérer Élève}
+\begin{itemize}
+    \item Ajouter un nouvel élève.
+    \item Modifier les informations d’un élève existant.
+    \item Rechercher et consulter une fiche élève.
+\end{itemize}
+
+\subsection*{Use Case 2: Gérer Coach}
+\begin{itemize}
+    \item Ajouter un coach.
+    \item Modifier ses données.
+    \item Afficher les séances animées.
+\end{itemize}
+
+\subsection*{Use Case 3: Gérer Programme}
+\begin{itemize}
+    \item Définir les programmes proposés.
+    \item Associer des séances à un programme.
+\end{itemize}
+
+\subsection*{Use Case 4: Planifier une Séance}
+\begin{itemize}
+    \item Créer une séance (date, horaire, coach, programme).
+    \item Définir la capacité maximale.
+\end{itemize}
+\subsection*{Use Case 5: Inscrire un Élève}
+\begin{itemize}
+    \item Sélectionner un élève.
+    \item Sélectionner une séance.
+    \item Vérifier la capacité.
+    \item Enregistrer l’inscription.
+\end{itemize}
+\subsection*{Use Case 6: Enregistrer Paiement}
+\begin{itemize}
+    \item Choisir un élève.
+    \item Saisir un montant et une période.
+    \item Générer un reçu ou un relevé.
+\end{itemize}
+\subsection*{Use Case 7: Générer Rapports}
+\begin{itemize}
+    \item Rapport de participation par programme.
+    \item Attestation individuelle.
+    \item Rapport de paiements mensuels.
+    \item Tableau de bord synthétique.
+\end{itemize}
+Ces cas d’utilisation constituent le cœur fonctionnel de l'application.
